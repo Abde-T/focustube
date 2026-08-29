@@ -1,0 +1,20 @@
+{
+  "name": "focustube",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "@types/node": "^26.4.0",
+    "esbuild": "^0.21.0",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@xenova/transformers": "^2.17.2"
+  }
+}
