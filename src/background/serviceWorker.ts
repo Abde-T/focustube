@@ -1,4 +1,5 @@
 import { createClassificationService } from '../ai/classificationService';
+import { initializePipeline } from '../ai/embeddingService';
 import {
   getCachedClassification,
   cacheClassification,
@@ -24,6 +25,10 @@ import { getFocusState, setFocusState } from '../storage/focusMode';
  */
 
 const classifier = createClassificationService();
+
+// Initialize the embedding model in the background on startup
+// This pre-loads the model so it's ready when needed
+initializePipeline();
 
 // ────────────────────────────────────────────
 // Message handling

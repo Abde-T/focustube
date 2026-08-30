@@ -56,8 +56,6 @@ export function initializeObserver(profile: UserProfile): void {
   startObserver();
   listenForNavigation();
   listenForProfileChanges();
-
-  console.log('[FocusTube] Observer initialized');
 }
 
 /**
@@ -75,7 +73,6 @@ export function destroyObserver(): void {
   processedVideos.clear();
   videoElementMap.clear();
   processedElements = new WeakSet();
-  console.log('[FocusTube] Observer destroyed');
 }
 
 // ────────────────────────────────────────────
@@ -281,8 +278,6 @@ function startObserver(): void {
     childList: true,
     subtree: true,
   });
-
-  console.log('[FocusTube] MutationObserver started');
 }
 
 // ────────────────────────────────────────────
@@ -292,7 +287,6 @@ function startObserver(): void {
 /** Listen for YouTube SPA navigation events. */
 function listenForNavigation(): void {
   document.addEventListener('yt-navigate-finish', () => {
-    console.log('[FocusTube] SPA navigation detected — rescanning');
     setTimeout(processExistingCards, 500);
   });
 }
@@ -301,7 +295,6 @@ function listenForNavigation(): void {
 function listenForProfileChanges(): void {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'PROFILE_CHANGED') {
-      console.log('[FocusTube] Profile changed — re-evaluating videos');
       chrome.runtime.sendMessage({ type: 'GET_PROFILE' }, (response) => {
         if (response?.profile) {
           const profile = response.profile;
@@ -347,9 +340,13 @@ function logResult(video: VideoMetadata, result: FilterResult): void {
       : result.action === 'allow'
         ? '✅'
         : '❓';
-  console.log(
-    `[FocusTube] ${icon} ${result.action.toUpperCase()} | "${video.title}" | ${result.reason} | source: ${result.source}`
-  );
+
+  console.log(`[FocusTube] ${icon} ${video.title.slice(0, 50)}...`, {
+    action: result.action,
+    reason: result.reason,
+    confidence: result.confidence,
+    source: result.source,
+  });
 }
 
 /** Send a stat update to the background (fire-and-forget). */

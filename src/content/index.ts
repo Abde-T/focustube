@@ -17,8 +17,6 @@ const DEFAULT_PROFILE: UserProfile = {
 };
 
 async function initialize(): Promise<void> {
-  console.log('[FocusTube] Content script loaded on', window.location.href);
-
   // ① Load debug config
   try {
     const debugConfig = await chrome.runtime.sendMessage({ type: 'GET_DEBUG' });
@@ -84,7 +82,6 @@ function redirectShortsUrl(): void {
   if (match) {
     const videoId = match[1];
     const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    console.log(`[FocusTube] Redirecting Short to regular player: ${watchUrl}`);
     window.location.replace(watchUrl);
   }
 }

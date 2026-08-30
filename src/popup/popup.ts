@@ -38,7 +38,7 @@ async function loadDebugState(): Promise<void> {
   try {
     const response = await chrome.runtime.sendMessage({ type: 'GET_DEBUG' });
     const toggle = document.getElementById('debug-toggle') as HTMLInputElement;
-    if (response) {
+    if (toggle && response) {
       toggle.checked = response.enabled;
     }
   } catch (e) {
@@ -48,6 +48,7 @@ async function loadDebugState(): Promise<void> {
 
 function setupDebugToggle(): void {
   const toggle = document.getElementById('debug-toggle') as HTMLInputElement;
+  if (!toggle) return; // Skip if element doesn't exist
   toggle.addEventListener('change', async () => {
     await chrome.runtime.sendMessage({
       type: 'TOGGLE_DEBUG',
@@ -77,6 +78,34 @@ async function loadProfile(): Promise<void> {
 
 function renderProfileUI(): void {
   if (!currentProfile) return;
+
+  // Quick toggle button
+  const quickToggle = document.getElementById('quick-toggle') as HTMLButtonElement;
+  const toggleText = document.getElementById('toggle-text') as HTMLElement;
+  const toggleIconEnabled = document.getElementById('toggle-icon-enabled') as unknown as SVGElement;
+  const toggleIconDisabled = document.getElementById('toggle-icon-disabled') as unknown as SVGElement;
+  
+  const isEnabled = currentProfile.filteringEnabled !== false; // Default to true if undefined
+  
+  if (isEnabled) {
+    quickToggle.classList.remove('disabled');
+    quickToggle.classList.add('enabled');
+    toggleText.textContent = 'On';
+    toggleIconEnabled.style.display = 'block';
+    toggleIconDisabled.style.display = 'none';
+  } else {
+    quickToggle.classList.remove('enabled');
+    quickToggle.classList.add('disabled');
+    toggleText.textContent = 'Off';
+    toggleIconEnabled.style.display = 'none';
+    toggleIconDisabled.style.display = 'block';
+  }
+  
+  quickToggle.onclick = () => {
+    const currentState = currentProfile!.filteringEnabled !== false;
+    const newState = !currentState;
+    updateProfile({ filteringEnabled: newState });
+  };
 
   // Shorts toggle
   const shortsToggle = document.getElementById('shorts-toggle') as HTMLInputElement;
@@ -128,6 +157,22 @@ function renderProfileUI(): void {
   // Goals - Show parent topics instead of all individual subtopics
   const goalsList = document.getElementById('goals-list')!;
   goalsList.innerHTML = '';
+  
+  // If user has only a single specific topic selected, show it as-is without parent grouping
+  if (currentProfile.goals.length === 1) {
+    const singleGoal = currentProfile.goals[0];
+    const parent = getParentTopic(singleGoal);
+    
+    // If it's a child topic, show just that child (not the parent group)
+    if (parent) {
+      const label = singleGoal.charAt(0).toUpperCase() + singleGoal.slice(1);
+      goalsList.appendChild(createPill(singleGoal, label, true, false, (checked) => {
+        const newGoals = checked ? [singleGoal] : [];
+        updateProfile({ goals: newGoals });
+      }));
+      return; // Skip parent grouping
+    }
+  }
   
   // Get all parent topics for display
   const parentTopics = Object.entries(PARENT_TOPICS).map(([id, data]) => ({
@@ -215,6 +260,8 @@ async function updateProfile(changes: Partial<UserProfile>): Promise<void> {
   
   try {
     await chrome.runtime.sendMessage({ type: 'UPDATE_PROFILE', profile: currentProfile });
+    // Re-render UI to reflect changes
+    renderProfileUI();
   } catch (e) {
     console.warn('[FocusTube] Failed to update profile:', e);
   }
@@ -268,7 +315,6 @@ function setupAIGenerator(): void {
   const btn = document.getElementById('btn-analyze') as HTMLButtonElement;
   const input = document.getElementById('ai-prompt') as HTMLTextAreaElement;
   const spinner = document.getElementById('ai-spinner') as HTMLElement;
-  const loadingText = document.getElementById('ai-loading-text') as HTMLElement;
   const icon = document.getElementById('ai-icon') as HTMLElement;
 
   btn.addEventListener('click', async () => {
@@ -278,14 +324,11 @@ function setupAIGenerator(): void {
     btn.disabled = true;
     if (icon) icon.style.display = 'none';
     spinner.style.display = 'block';
-    if (loadingText) loadingText.style.display = 'inline-block';
 
     try {
       // Use semantic topic profiles for better matching
       const topicIds = AVAILABLE_GOALS.map(g => g.id);
       const matches = await scoreTextAgainstTopics(prompt, topicIds);
-
-      console.log('[FocusTube] Semantic matches:', matches);
 
       if (matches.length > 0 && currentProfile) {
         // Filter by relevance threshold (0.4 for user intent matching)
@@ -296,8 +339,11 @@ function setupAIGenerator(): void {
           return;
         }
 
-        const matchedIds = relevantMatches.map(m => m.topic);
-        const newGoals = Array.from(new Set([...currentProfile.goals, ...matchedIds]));
+        // When user describes what they want to focus on, set only the best matching topic
+        // Take the highest-scoring match
+        const bestMatch = relevantMatches.sort((a, b) => b.score - a.score)[0];
+        const newGoals = [bestMatch.topic];
+                
         await updateProfile({ goals: newGoals });
         input.value = '';
         renderProfileUI();
@@ -312,7 +358,6 @@ function setupAIGenerator(): void {
       btn.disabled = false;
       if (icon) icon.style.display = 'block';
       spinner.style.display = 'none';
-      if (loadingText) loadingText.style.display = 'none';
     }
   });
 }
@@ -429,12 +474,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   loadStats();
-  loadDebugState();
   await loadProfile();
   loadLearnedPreferences();
   loadFocusMode();
   setupFocusMode();
-  setupDebugToggle();
   setupAIGenerator();
 
   // Refresh stats every 2 seconds while popup is open

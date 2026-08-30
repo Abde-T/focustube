@@ -24,18 +24,19 @@ const KEYS = {
 // ────────────────────────────────────────────
 
 const DEFAULT_PROFILE: UserProfile = {
-  goals: ['software engineering', 'programming'],
+  goals: [],
   blockedCategories: [
     'entertainment',
+    'gaming',
     'celebrity',
     'drama',
     'reaction',
-    'gaming',
   ],
   blockShorts: true,
   requireUncertainConfirmation: true,
-  blockedDisplayMode: 'dim',
+  blockedDisplayMode: 'hide',
   relevanceThreshold: 0.35, // Default to 35% - blocks "Weak" and below
+  filteringEnabled: true, // Filtering enabled by default
 };
 
 const DEFAULT_STATS: FilterStats = {

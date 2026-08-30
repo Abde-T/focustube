@@ -29841,6 +29841,187 @@ ${t2}`);
     ]
   };
 
+  // src/data/topicHierarchy.ts
+  var PARENT_TOPICS = {
+    "tech": {
+      label: "Tech",
+      children: [
+        "programming",
+        "software engineering",
+        "web development",
+        "mobile development",
+        "data science",
+        "machine learning",
+        "artificial intelligence",
+        "cybersecurity",
+        "devops",
+        "cloud computing",
+        "engineering",
+        "mechanical engineering",
+        "electrical engineering",
+        "civil engineering"
+      ]
+    },
+    "business": {
+      label: "Business",
+      children: [
+        "entrepreneurship",
+        "business",
+        "marketing",
+        "sales",
+        "finance",
+        "investing",
+        "personal finance",
+        "economics"
+      ]
+    },
+    "science": {
+      label: "Science",
+      children: [
+        "science",
+        "physics",
+        "chemistry",
+        "biology",
+        "astronomy",
+        "environmental science",
+        "mathematics",
+        "calculus",
+        "statistics",
+        "algebra",
+        "geometry"
+      ]
+    },
+    "history": {
+      label: "History",
+      children: [
+        "history",
+        "world history",
+        "ancient history",
+        "modern history"
+      ]
+    },
+    "languages": {
+      label: "Languages",
+      children: [
+        "language learning",
+        "english",
+        "spanish",
+        "french",
+        "german",
+        "japanese",
+        "chinese",
+        "korean"
+      ]
+    },
+    "productivity": {
+      label: "Productivity",
+      children: [
+        "productivity",
+        "time management",
+        "goal setting",
+        "study skills",
+        "personal development",
+        "self improvement"
+      ]
+    },
+    "design": {
+      label: "Design",
+      children: [
+        "design",
+        "graphic design",
+        "ui design",
+        "ux design",
+        "photography",
+        "video editing",
+        "animation",
+        "architecture",
+        "interior design"
+      ]
+    },
+    "health": {
+      label: "Health",
+      children: [
+        "fitness",
+        "mental health",
+        "meditation",
+        "mindfulness",
+        "yoga",
+        "nutrition",
+        "medicine",
+        "nursing"
+      ]
+    },
+    "cooking": {
+      label: "Cooking",
+      children: [
+        "cooking",
+        "baking",
+        "healthy eating",
+        "meal prep"
+      ]
+    },
+    "music": {
+      label: "Music",
+      children: [
+        "music",
+        "guitar",
+        "piano",
+        "music production",
+        "songwriting"
+      ]
+    },
+    "writing": {
+      label: "Writing",
+      children: [
+        "writing",
+        "creative writing",
+        "journaling",
+        "blogging"
+      ]
+    },
+    "social_sciences": {
+      label: "Social Sciences",
+      children: [
+        "philosophy",
+        "psychology",
+        "sociology",
+        "political science",
+        "law",
+        "education",
+        "teaching",
+        "research"
+      ]
+    },
+    "lifestyle": {
+      label: "Lifestyle",
+      children: [
+        "gardening",
+        "diy",
+        "woodworking",
+        "automotive",
+        "travel",
+        "geography",
+        "cultures",
+        "religion"
+      ]
+    }
+  };
+  function getParentTopic(childTopicId) {
+    for (const [parentId, parent] of Object.entries(PARENT_TOPICS)) {
+      if (parent.children.includes(childTopicId)) {
+        return parentId;
+      }
+    }
+    return null;
+  }
+  function getChildTopics(parentTopicId) {
+    const parent = PARENT_TOPICS[parentTopicId];
+    return parent ? parent.children : [];
+  }
+  function isParentTopic(topicId) {
+    return PARENT_TOPICS.hasOwnProperty(topicId);
+  }
+
   // src/popup/popup.ts
   var AVAILABLE_GOALS = topics_default.availableGoals;
   var AVAILABLE_BLOCKED = topics_default.availableBlocked;
@@ -29857,26 +30038,6 @@ ${t2}`);
     } catch (e) {
       console.warn("[FocusTube] Could not load stats:", e);
     }
-  }
-  async function loadDebugState() {
-    try {
-      const response = await chrome.runtime.sendMessage({ type: "GET_DEBUG" });
-      const toggle = document.getElementById("debug-toggle");
-      if (response) {
-        toggle.checked = response.enabled;
-      }
-    } catch (e) {
-      console.warn("[FocusTube] Could not load debug state:", e);
-    }
-  }
-  function setupDebugToggle() {
-    const toggle = document.getElementById("debug-toggle");
-    toggle.addEventListener("change", async () => {
-      await chrome.runtime.sendMessage({
-        type: "TOGGLE_DEBUG",
-        enabled: toggle.checked
-      });
-    });
   }
   function setText(id, value) {
     const el = document.getElementById(id);
@@ -29895,6 +30056,29 @@ ${t2}`);
   }
   function renderProfileUI() {
     if (!currentProfile) return;
+    const quickToggle = document.getElementById("quick-toggle");
+    const toggleText = document.getElementById("toggle-text");
+    const toggleIconEnabled = document.getElementById("toggle-icon-enabled");
+    const toggleIconDisabled = document.getElementById("toggle-icon-disabled");
+    const isEnabled = currentProfile.filteringEnabled !== false;
+    if (isEnabled) {
+      quickToggle.classList.remove("disabled");
+      quickToggle.classList.add("enabled");
+      toggleText.textContent = "On";
+      toggleIconEnabled.style.display = "block";
+      toggleIconDisabled.style.display = "none";
+    } else {
+      quickToggle.classList.remove("enabled");
+      quickToggle.classList.add("disabled");
+      toggleText.textContent = "Off";
+      toggleIconEnabled.style.display = "none";
+      toggleIconDisabled.style.display = "block";
+    }
+    quickToggle.onclick = () => {
+      const currentState = currentProfile.filteringEnabled !== false;
+      const newState = !currentState;
+      updateProfile({ filteringEnabled: newState });
+    };
     const shortsToggle = document.getElementById("shorts-toggle");
     shortsToggle.checked = currentProfile.blockShorts;
     shortsToggle.onchange = () => updateProfile({ blockShorts: shortsToggle.checked });
@@ -29937,17 +30121,49 @@ ${t2}`);
     };
     const goalsList = document.getElementById("goals-list");
     goalsList.innerHTML = "";
-    const allGoals = [...AVAILABLE_GOALS];
-    currentProfile.goals.forEach((customGoal) => {
-      if (!allGoals.find((g) => g.id === customGoal)) {
+    if (currentProfile.goals.length === 1) {
+      const singleGoal = currentProfile.goals[0];
+      const parent = getParentTopic(singleGoal);
+      if (parent) {
+        const label = singleGoal.charAt(0).toUpperCase() + singleGoal.slice(1);
+        goalsList.appendChild(createPill(singleGoal, label, true, false, (checked) => {
+          const newGoals = checked ? [singleGoal] : [];
+          updateProfile({ goals: newGoals });
+        }));
+        return;
+      }
+    }
+    const parentTopics = Object.entries(PARENT_TOPICS).map(([id, data]) => ({
+      id,
+      label: data.label
+    }));
+    const customGoals = currentProfile.goals.filter((goal) => !getParentTopic(goal));
+    customGoals.forEach((customGoal) => {
+      if (!parentTopics.find((p) => p.id === customGoal)) {
         const label = customGoal.charAt(0).toUpperCase() + customGoal.slice(1);
-        allGoals.push({ id: customGoal, label });
+        parentTopics.push({ id: customGoal, label });
       }
     });
-    allGoals.forEach((goal) => {
-      const isChecked = currentProfile.goals.includes(goal.id);
-      goalsList.appendChild(createPill(goal.id, goal.label, isChecked, false, (checked) => {
-        const newGoals = checked ? [...currentProfile.goals, goal.id] : currentProfile.goals.filter((g) => g !== goal.id);
+    parentTopics.forEach((parentTopic) => {
+      const childTopics = isParentTopic(parentTopic.id) ? getChildTopics(parentTopic.id) : [parentTopic.id];
+      const isChecked = childTopics.some((child) => currentProfile.goals.includes(child));
+      goalsList.appendChild(createPill(parentTopic.id, parentTopic.label, isChecked, false, (checked) => {
+        let newGoals;
+        if (checked) {
+          if (isParentTopic(parentTopic.id)) {
+            newGoals = [...currentProfile.goals, ...getChildTopics(parentTopic.id)];
+          } else {
+            newGoals = [...currentProfile.goals, parentTopic.id];
+          }
+        } else {
+          if (isParentTopic(parentTopic.id)) {
+            const childrenToRemove = getChildTopics(parentTopic.id);
+            newGoals = currentProfile.goals.filter((g) => !childrenToRemove.includes(g));
+          } else {
+            newGoals = currentProfile.goals.filter((g) => g !== parentTopic.id);
+          }
+        }
+        newGoals = [...new Set(newGoals)];
         updateProfile({ goals: newGoals });
       }));
     });
@@ -29976,6 +30192,7 @@ ${t2}`);
     currentProfile = { ...currentProfile, ...changes };
     try {
       await chrome.runtime.sendMessage({ type: "UPDATE_PROFILE", profile: currentProfile });
+      renderProfileUI();
     } catch (e) {
       console.warn("[FocusTube] Failed to update profile:", e);
     }
@@ -30017,7 +30234,6 @@ ${t2}`);
     const btn = document.getElementById("btn-analyze");
     const input = document.getElementById("ai-prompt");
     const spinner = document.getElementById("ai-spinner");
-    const loadingText = document.getElementById("ai-loading-text");
     const icon = document.getElementById("ai-icon");
     btn.addEventListener("click", async () => {
       const prompt = input.value.trim();
@@ -30025,19 +30241,17 @@ ${t2}`);
       btn.disabled = true;
       if (icon) icon.style.display = "none";
       spinner.style.display = "block";
-      if (loadingText) loadingText.style.display = "inline-block";
       try {
         const topicIds = AVAILABLE_GOALS.map((g) => g.id);
         const matches = await scoreTextAgainstTopics(prompt, topicIds);
-        console.log("[FocusTube] Semantic matches:", matches);
         if (matches.length > 0 && currentProfile) {
           const relevantMatches = matches.filter((m) => m.score >= 0.4);
           if (relevantMatches.length === 0) {
             alert("Could not find closely matching topics. Try describing your goals differently.");
             return;
           }
-          const matchedIds = relevantMatches.map((m) => m.topic);
-          const newGoals = Array.from(/* @__PURE__ */ new Set([...currentProfile.goals, ...matchedIds]));
+          const bestMatch = relevantMatches.sort((a, b) => b.score - a.score)[0];
+          const newGoals = [bestMatch.topic];
           await updateProfile({ goals: newGoals });
           input.value = "";
           renderProfileUI();
@@ -30051,7 +30265,6 @@ ${t2}`);
         btn.disabled = false;
         if (icon) icon.style.display = "block";
         spinner.style.display = "none";
-        if (loadingText) loadingText.style.display = "none";
       }
     });
   }
@@ -30141,12 +30354,10 @@ ${t2}`);
       });
     });
     loadStats();
-    loadDebugState();
     await loadProfile();
     loadLearnedPreferences();
     loadFocusMode();
     setupFocusMode();
-    setupDebugToggle();
     setupAIGenerator();
     setInterval(loadStats, 2e3);
   });

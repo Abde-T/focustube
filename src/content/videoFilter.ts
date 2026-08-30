@@ -1,4 +1,5 @@
 import { VideoMetadata, UserProfile, FilterResult } from '../types';
+import { expandTopics, getParentTopic } from '../data/topicHierarchy';
 
 /**
  * Deterministic local filtering.
@@ -156,15 +157,20 @@ function topicKeywordRelevance(text: string, topic: string): number {
  * 
  * IMPORTANT: Topic keywords take precedence over category keywords.
  * If text matches topic keywords first, category blocking is skipped.
+ * 
+ * Note: userGoals may contain parent topics that need to be expanded
  */
 function matchBlockedCategory(
   text: string,
   blockedCategories: string[],
   userGoals: string[]
 ): string | null {
+  // Expand parent topics to their children for keyword checking
+  const expandedGoals = expandTopics(userGoals);
+  
   // First, check if text matches user's goal keywords
   // If it does, skip category blocking to avoid false positives
-  for (const goal of userGoals) {
+  for (const goal of expandedGoals) {
     const goalKeywords = TOPIC_KEYWORDS[goal.toLowerCase()];
     if (goalKeywords) {
       for (const keyword of goalKeywords) {
@@ -224,9 +230,17 @@ export function applyLocalFilters(
   video: VideoMetadata,
   profile: UserProfile
 ): FilterResult {
-  const focusActive = isFocusMode(profile);
+  // If filtering is disabled, allow everything silently
+  if (profile.filteringEnabled === false) {
+    return {
+      action: 'allow',
+      reason: '',
+      confidence: 1.0,
+      source: 'local',
+    };
+  }
 
-  // ① Allowed channels (allowlist bypass)
+  // ① Allowed channels bypass all filtering
   if (profile.allowedChannels?.length) {
     const channelLower = video.channel.toLowerCase();
     const isAllowed = profile.allowedChannels.some(
@@ -265,6 +279,9 @@ export function applyLocalFilters(
 
   // ③ In Focus Mode: check if video matches the focus topic via keywords.
   //    If it does, ALLOW immediately — don't let category blocking interfere.
+  // Focus Mode is active when: single goal + hide display mode
+  const focusActive = profile.goals?.length === 1 && profile.blockedDisplayMode === 'hide';
+  
   if (focusActive) {
     const combined = `${video.title.toLowerCase()} ${video.channel.toLowerCase()}`;
     const focusTopic = profile.goals[0];

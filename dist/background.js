@@ -13387,6 +13387,190 @@ ${t2}`);
     }
   });
 
+  // src/data/topicHierarchy.ts
+  var PARENT_TOPICS = {
+    "tech": {
+      label: "Tech",
+      children: [
+        "programming",
+        "software engineering",
+        "web development",
+        "mobile development",
+        "data science",
+        "machine learning",
+        "artificial intelligence",
+        "cybersecurity",
+        "devops",
+        "cloud computing",
+        "engineering",
+        "mechanical engineering",
+        "electrical engineering",
+        "civil engineering"
+      ]
+    },
+    "business": {
+      label: "Business",
+      children: [
+        "entrepreneurship",
+        "business",
+        "marketing",
+        "sales",
+        "finance",
+        "investing",
+        "personal finance",
+        "economics"
+      ]
+    },
+    "science": {
+      label: "Science",
+      children: [
+        "science",
+        "physics",
+        "chemistry",
+        "biology",
+        "astronomy",
+        "environmental science",
+        "mathematics",
+        "calculus",
+        "statistics",
+        "algebra",
+        "geometry"
+      ]
+    },
+    "history": {
+      label: "History",
+      children: [
+        "history",
+        "world history",
+        "ancient history",
+        "modern history"
+      ]
+    },
+    "languages": {
+      label: "Languages",
+      children: [
+        "language learning",
+        "english",
+        "spanish",
+        "french",
+        "german",
+        "japanese",
+        "chinese",
+        "korean"
+      ]
+    },
+    "productivity": {
+      label: "Productivity",
+      children: [
+        "productivity",
+        "time management",
+        "goal setting",
+        "study skills",
+        "personal development",
+        "self improvement"
+      ]
+    },
+    "design": {
+      label: "Design",
+      children: [
+        "design",
+        "graphic design",
+        "ui design",
+        "ux design",
+        "photography",
+        "video editing",
+        "animation",
+        "architecture",
+        "interior design"
+      ]
+    },
+    "health": {
+      label: "Health",
+      children: [
+        "fitness",
+        "mental health",
+        "meditation",
+        "mindfulness",
+        "yoga",
+        "nutrition",
+        "medicine",
+        "nursing"
+      ]
+    },
+    "cooking": {
+      label: "Cooking",
+      children: [
+        "cooking",
+        "baking",
+        "healthy eating",
+        "meal prep"
+      ]
+    },
+    "music": {
+      label: "Music",
+      children: [
+        "music",
+        "guitar",
+        "piano",
+        "music production",
+        "songwriting"
+      ]
+    },
+    "writing": {
+      label: "Writing",
+      children: [
+        "writing",
+        "creative writing",
+        "journaling",
+        "blogging"
+      ]
+    },
+    "social_sciences": {
+      label: "Social Sciences",
+      children: [
+        "philosophy",
+        "psychology",
+        "sociology",
+        "political science",
+        "law",
+        "education",
+        "teaching",
+        "research"
+      ]
+    },
+    "lifestyle": {
+      label: "Lifestyle",
+      children: [
+        "gardening",
+        "diy",
+        "woodworking",
+        "automotive",
+        "travel",
+        "geography",
+        "cultures",
+        "religion"
+      ]
+    }
+  };
+  function getChildTopics(parentTopicId) {
+    const parent = PARENT_TOPICS[parentTopicId];
+    return parent ? parent.children : [];
+  }
+  function isParentTopic(topicId) {
+    return PARENT_TOPICS.hasOwnProperty(topicId);
+  }
+  function expandTopics(topics) {
+    const expanded = [];
+    for (const topic of topics) {
+      if (isParentTopic(topic)) {
+        expanded.push(...getChildTopics(topic));
+      } else {
+        expanded.push(topic);
+      }
+    }
+    return [...new Set(expanded)];
+  }
+
   // node_modules/@xenova/transformers/src/utils/core.js
   function dispatchCallback(progress_callback, data) {
     if (progress_callback) progress_callback(data);
@@ -28905,6 +29089,17 @@ ${t2}`);
   var MODEL_ID = "Xenova/all-MiniLM-L6-v2";
   var pipelinePromise = null;
   var embeddingCache = /* @__PURE__ */ new Map();
+  function initializePipeline() {
+    if (!pipelinePromise) {
+      pipelinePromise = pipeline("feature-extraction", MODEL_ID, {
+        progress_callback: (info) => {
+          if (info.status === "progress") {
+            console.log(`[FocusTube] Model loading: ${Math.round(info.progress * 100)}%`);
+          }
+        }
+      });
+    }
+  }
   async function getPipeline(onProgress) {
     if (!pipelinePromise) {
       pipelinePromise = pipeline("feature-extraction", MODEL_ID, {
@@ -29618,6 +29813,139 @@ ${t2}`);
     return scores.sort((a, b) => b.score - a.score);
   }
 
+  // src/ai/relevanceThresholds.ts
+  var RELEVANCE_THRESHOLDS = {
+    /**
+     * Strong match threshold
+     * Videos scoring above this are clearly relevant to the topic.
+     * Used for high-confidence classification decisions.
+     */
+    STRONG: 0.7,
+    /**
+     * Moderate match threshold
+     * Videos scoring above this are likely relevant but may need
+     * additional context or confirmation.
+     */
+    MODERATE: 0.5,
+    /**
+     * Weak match threshold
+     * Videos scoring above this have some semantic relationship
+     * but are not clearly relevant. Set just above default threshold
+     * so videos at default threshold are labeled "Very weak".
+     */
+    WEAK: 0.35,
+    /**
+     * User intent matching threshold
+     * Used when matching user descriptions to topics in the AI Topic Generator.
+     * Higher threshold because we want to be confident about topic suggestions.
+     */
+    USER_INTENT: 0.4,
+    /**
+     * Default relevance threshold for video classification
+     * Videos scoring below this will be blocked by default.
+     * Users can adjust this in settings.
+     */
+    DEFAULT_VIDEO_THRESHOLD: 0.3,
+    /**
+     * Focus mode minimum threshold
+     * In Focus Mode, the threshold is at least this value regardless
+     * of user settings, to ensure stricter filtering.
+     */
+    FOCUS_MODE_MINIMUM: 0.35,
+    /**
+     * Keyword match threshold
+     * If keyword overlap score is above this, it's considered a strong
+     * signal and takes precedence over embedding scores.
+     */
+    KEYWORD_MATCH: 0.5,
+    /**
+     * Combined method agreement threshold
+     * If both embedding and keyword methods score above this,
+     * we boost the combined score.
+     */
+    METHOD_AGREEMENT: 0.25,
+    /**
+     * Combined method boost multiplier
+     * When both methods agree, multiply the score by this factor.
+     */
+    METHOD_AGREEMENT_BOOST: 1.3
+  };
+  function getSimilarityLabel(score) {
+    if (score >= RELEVANCE_THRESHOLDS.STRONG) return "Strong";
+    if (score >= RELEVANCE_THRESHOLDS.MODERATE) return "Moderate";
+    if (score >= RELEVANCE_THRESHOLDS.WEAK) return "Weak";
+    return "Very weak";
+  }
+
+  // src/storage/preferences.ts
+  var KEYS = {
+    DECISIONS: "focustube_decisions",
+    WEIGHTS: "focustube_weights"
+  };
+  async function recordDecision(videoId, topics, decision) {
+    try {
+      const data = await chrome.storage.local.get([KEYS.DECISIONS, KEYS.WEIGHTS]);
+      const decisions = data[KEYS.DECISIONS] || [];
+      const weights = data[KEYS.WEIGHTS] || {};
+      decisions.push({
+        videoId,
+        topics,
+        decision,
+        timestamp: Date.now()
+      });
+      if (decisions.length > 500) {
+        decisions.shift();
+      }
+      const delta = decision === "allow" ? 0.1 : -0.1;
+      for (const topic of topics) {
+        weights[topic] = (weights[topic] || 0) + delta;
+        if (weights[topic] > 1) weights[topic] = 1;
+        if (weights[topic] < -1) weights[topic] = -1;
+      }
+      await chrome.storage.local.set({
+        [KEYS.DECISIONS]: decisions,
+        [KEYS.WEIGHTS]: weights
+      });
+    } catch (e) {
+      console.warn("[FocusTube] Error recording decision", e);
+    }
+  }
+  async function getTopicWeights() {
+    try {
+      const data = await chrome.storage.local.get(KEYS.WEIGHTS);
+      return data[KEYS.WEIGHTS] || {};
+    } catch {
+      return {};
+    }
+  }
+
+  // src/storage/focusMode.ts
+  var KEY = "focustube_focus_mode";
+  var DEFAULT_STATE = {
+    active: false,
+    topic: "",
+    durationMs: 0,
+    startTime: 0
+  };
+  async function getFocusState() {
+    try {
+      const data = await chrome.storage.local.get(KEY);
+      const state = data[KEY] || DEFAULT_STATE;
+      if (state.active) {
+        if (state.durationMs > 0 && Date.now() > state.startTime + state.durationMs) {
+          state.active = false;
+          await chrome.storage.local.set({ [KEY]: state });
+        }
+      }
+      return state;
+    } catch {
+      return DEFAULT_STATE;
+    }
+  }
+  async function setFocusState(state) {
+    await chrome.storage.local.set({ [KEY]: state });
+  }
+
   // src/content/videoFilter.ts
   var TOPIC_KEYWORDS = {
     "software engineering": [
@@ -29884,139 +30212,6 @@ ${t2}`);
     ]
   };
 
-  // src/storage/preferences.ts
-  var KEYS = {
-    DECISIONS: "focustube_decisions",
-    WEIGHTS: "focustube_weights"
-  };
-  async function recordDecision(videoId, topics, decision) {
-    try {
-      const data = await chrome.storage.local.get([KEYS.DECISIONS, KEYS.WEIGHTS]);
-      const decisions = data[KEYS.DECISIONS] || [];
-      const weights = data[KEYS.WEIGHTS] || {};
-      decisions.push({
-        videoId,
-        topics,
-        decision,
-        timestamp: Date.now()
-      });
-      if (decisions.length > 500) {
-        decisions.shift();
-      }
-      const delta = decision === "allow" ? 0.1 : -0.1;
-      for (const topic of topics) {
-        weights[topic] = (weights[topic] || 0) + delta;
-        if (weights[topic] > 1) weights[topic] = 1;
-        if (weights[topic] < -1) weights[topic] = -1;
-      }
-      await chrome.storage.local.set({
-        [KEYS.DECISIONS]: decisions,
-        [KEYS.WEIGHTS]: weights
-      });
-    } catch (e) {
-      console.warn("[FocusTube] Error recording decision", e);
-    }
-  }
-  async function getTopicWeights() {
-    try {
-      const data = await chrome.storage.local.get(KEYS.WEIGHTS);
-      return data[KEYS.WEIGHTS] || {};
-    } catch {
-      return {};
-    }
-  }
-
-  // src/storage/focusMode.ts
-  var KEY = "focustube_focus_mode";
-  var DEFAULT_STATE = {
-    active: false,
-    topic: "",
-    durationMs: 0,
-    startTime: 0
-  };
-  async function getFocusState() {
-    try {
-      const data = await chrome.storage.local.get(KEY);
-      const state = data[KEY] || DEFAULT_STATE;
-      if (state.active) {
-        if (state.durationMs > 0 && Date.now() > state.startTime + state.durationMs) {
-          state.active = false;
-          await chrome.storage.local.set({ [KEY]: state });
-        }
-      }
-      return state;
-    } catch {
-      return DEFAULT_STATE;
-    }
-  }
-  async function setFocusState(state) {
-    await chrome.storage.local.set({ [KEY]: state });
-  }
-
-  // src/ai/relevanceThresholds.ts
-  var RELEVANCE_THRESHOLDS = {
-    /**
-     * Strong match threshold
-     * Videos scoring above this are clearly relevant to the topic.
-     * Used for high-confidence classification decisions.
-     */
-    STRONG: 0.7,
-    /**
-     * Moderate match threshold
-     * Videos scoring above this are likely relevant but may need
-     * additional context or confirmation.
-     */
-    MODERATE: 0.5,
-    /**
-     * Weak match threshold
-     * Videos scoring above this have some semantic relationship
-     * but are not clearly relevant. Set just above default threshold
-     * so videos at default threshold are labeled "Very weak".
-     */
-    WEAK: 0.35,
-    /**
-     * User intent matching threshold
-     * Used when matching user descriptions to topics in the AI Topic Generator.
-     * Higher threshold because we want to be confident about topic suggestions.
-     */
-    USER_INTENT: 0.4,
-    /**
-     * Default relevance threshold for video classification
-     * Videos scoring below this will be blocked by default.
-     * Users can adjust this in settings.
-     */
-    DEFAULT_VIDEO_THRESHOLD: 0.3,
-    /**
-     * Focus mode minimum threshold
-     * In Focus Mode, the threshold is at least this value regardless
-     * of user settings, to ensure stricter filtering.
-     */
-    FOCUS_MODE_MINIMUM: 0.35,
-    /**
-     * Keyword match threshold
-     * If keyword overlap score is above this, it's considered a strong
-     * signal and takes precedence over embedding scores.
-     */
-    KEYWORD_MATCH: 0.5,
-    /**
-     * Combined method agreement threshold
-     * If both embedding and keyword methods score above this,
-     * we boost the combined score.
-     */
-    METHOD_AGREEMENT: 0.25,
-    /**
-     * Combined method boost multiplier
-     * When both methods agree, multiply the score by this factor.
-     */
-    METHOD_AGREEMENT_BOOST: 1.3
-  };
-  function getSimilarityLabel(score) {
-    if (score >= RELEVANCE_THRESHOLDS.STRONG) return "Strong";
-    if (score >= RELEVANCE_THRESHOLDS.MODERATE) return "Moderate";
-    if (score >= RELEVANCE_THRESHOLDS.WEAK) return "Weak";
-    return "Very weak";
-  }
-
   // src/ai/mockClassifier.ts
   function keywordOverlapScore(videoText, topic) {
     const textLower = videoText.toLowerCase();
@@ -30090,7 +30285,8 @@ ${t2}`);
       const combined = `${titleLower} ${channelLower}${descriptionText}`;
       const focus = await getFocusState();
       const activeGoals = focus.active && focus.topic ? [focus.topic] : userProfile.goals;
-      if (activeGoals.length === 0) {
+      const expandedGoals = expandTopics(activeGoals);
+      if (expandedGoals.length === 0) {
         return {
           action: "block",
           categories: ["unrelated"],
@@ -30114,11 +30310,11 @@ ${t2}`);
         }
       }
       const weights = await getTopicWeights();
-      const topicScores = await scoreTextAgainstTopics(combined, activeGoals);
+      const topicScores = await scoreTextAgainstTopics(combined, expandedGoals);
       const similarityScores = {};
       let highestScore = 0;
       let bestTopic = "";
-      for (const goal of activeGoals) {
+      for (const goal of expandedGoals) {
         const semanticMatch = topicScores.find((m) => m.topic === goal.toLowerCase());
         const semanticScore = semanticMatch ? semanticMatch.score : 0;
         const keywordScore = keywordOverlapScore(combined, goal);
@@ -30154,7 +30350,7 @@ ${t2}`);
       const isVeryWeak = similarityLabel === "Very weak";
       const isWeak = similarityLabel === "Weak";
       let bestKeywordScore = 0;
-      for (const goal of activeGoals) {
+      for (const goal of expandedGoals) {
         const kwScore = keywordOverlapScore(combined, goal);
         if (kwScore > bestKeywordScore) {
           bestKeywordScore = kwScore;
@@ -30196,19 +30392,21 @@ ${t2}`);
     DEBUG: "focustube_debug"
   };
   var DEFAULT_PROFILE = {
-    goals: ["software engineering", "programming"],
+    goals: [],
     blockedCategories: [
       "entertainment",
+      "gaming",
       "celebrity",
       "drama",
-      "reaction",
-      "gaming"
+      "reaction"
     ],
     blockShorts: true,
     requireUncertainConfirmation: true,
-    blockedDisplayMode: "dim",
-    relevanceThreshold: 0.35
+    blockedDisplayMode: "hide",
+    relevanceThreshold: 0.35,
     // Default to 35% - blocks "Weak" and below
+    filteringEnabled: true
+    // Filtering enabled by default
   };
   var DEFAULT_STATS = {
     totalProcessed: 0,
@@ -30299,6 +30497,7 @@ ${t2}`);
 
   // src/background/serviceWorker.ts
   var classifier = createClassificationService();
+  initializePipeline();
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     switch (message.type) {
       case "CLASSIFY_VIDEO":

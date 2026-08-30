@@ -49,6 +49,10 @@ function copyStaticFiles() {
     resolve(__dirname, 'src/popup/popup.html'),
     resolve(distDir, 'popup.html')
   );
+  copyFileSync(
+    resolve(__dirname, 'icon.png'),
+    resolve(distDir, 'icon.png')
+  );
 }
 
 async function build() {
@@ -74,7 +78,6 @@ async function build() {
   });
 
   copyStaticFiles();
-  console.log('✅ Build complete → dist/');
 }
 
 if (isWatch) {
@@ -98,7 +101,6 @@ if (isWatch) {
 
   copyStaticFiles();
   await Promise.all(contexts.map(ctx => ctx.watch()));
-  console.log('👀 Watching for changes...');
 } else {
   await build();
 }

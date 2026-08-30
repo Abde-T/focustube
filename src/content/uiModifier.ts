@@ -173,6 +173,12 @@ export function setShortsBlocking(enabled: boolean): void {
 export function applyFilterResult(video: VideoMetadata, result: FilterResult, profile: UserProfile): void {
   const el = video.element;
 
+  // If filtering is disabled, don't apply any UI modifications
+  if (profile.filteringEnabled === false) {
+    cleanElement(el);
+    return;
+  }
+
   // Store original display for reversal
   if (!originalDisplays.has(el)) {
     originalDisplays.set(el, el.style.display);

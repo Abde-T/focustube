@@ -1,10 +1,11 @@
 import { ClassificationService, ClassificationResult, SerializableVideoMetadata, UserProfile } from '../types';
-import { embed, similarity } from './embeddingService';
-import { scoreTextAgainstTopics, scoreTopicAgainstEmbedding, getTopicEmbeddings } from './topicEmbeddingCache';
-import { TOPIC_KEYWORDS } from '../content/videoFilter';
+import { expandTopics } from '../data/topicHierarchy';
+import { getSemanticProfile } from '../data/semanticProfiles';
+import { scoreTextAgainstTopics } from './topicEmbeddingCache';
+import { RELEVANCE_THRESHOLDS, getSimilarityLabel } from './relevanceThresholds';
 import { getTopicWeights } from '../storage/preferences';
 import { getFocusState } from '../storage/focusMode';
-import { RELEVANCE_THRESHOLDS, getSimilarityLabel } from './relevanceThresholds';
+import { TOPIC_KEYWORDS } from '../content/videoFilter';
 
 /**
  * Semantic implementation of ClassificationService.
@@ -141,8 +142,12 @@ export class SemanticClassifier implements ClassificationService {
     const focus = await getFocusState();
     const activeGoals = focus.active && focus.topic ? [focus.topic] : userProfile.goals;
 
+    // Expand parent topics to their child topics for filtering
+    // This ensures that if user selects "Tech", all tech sub-topics are included
+    const expandedGoals = expandTopics(activeGoals);
+
     // If no goals, can't do semantic matching
-    if (activeGoals.length === 0) {
+    if (expandedGoals.length === 0) {
        return {
         action: 'block',
         categories: ['unrelated'],
@@ -172,14 +177,15 @@ export class SemanticClassifier implements ClassificationService {
     const weights = await getTopicWeights();
 
     // Use semantic topic profiles for scoring
-    const topicScores = await scoreTextAgainstTopics(combined, activeGoals);
+    // Use expanded goals to include all child topics
+    const topicScores = await scoreTextAgainstTopics(combined, expandedGoals);
     
     // Combine with keyword scoring for hybrid approach
     const similarityScores: Record<string, number> = {};
     let highestScore = 0;
     let bestTopic = '';
 
-    for (const goal of activeGoals) {
+    for (const goal of expandedGoals) {
       // Get semantic score from topic profiles
       const semanticMatch = topicScores.find(m => m.topic === goal.toLowerCase());
       const semanticScore = semanticMatch ? semanticMatch.score : 0;
@@ -239,7 +245,7 @@ export class SemanticClassifier implements ClassificationService {
 
     // Get the best keyword score for this video
     let bestKeywordScore = 0;
-    for (const goal of activeGoals) {
+    for (const goal of expandedGoals) {
       const kwScore = keywordOverlapScore(combined, goal);
       if (kwScore > bestKeywordScore) {
         bestKeywordScore = kwScore;

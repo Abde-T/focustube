@@ -58,6 +58,8 @@ export interface UserProfile {
   blockedDisplayMode?: 'hide' | 'dim';
   /** Minimum relevance threshold (0-1) for allowing videos */
   relevanceThreshold?: number;
+  /** Whether filtering is currently enabled */
+  filteringEnabled?: boolean;
 }
 
 // ────────────────────────────────────────────

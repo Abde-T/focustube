@@ -21,6 +21,22 @@ const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
 let pipelinePromise: Promise<any> | null = null;
 const embeddingCache = new Map<string, number[]>();
 
+/**
+ * Initialize the pipeline in the background without blocking.
+ * Call this early to pre-warm the model.
+ */
+export function initializePipeline(): void {
+  if (!pipelinePromise) {
+    pipelinePromise = pipeline('feature-extraction', MODEL_ID, {
+      progress_callback: (info: any) => {
+        if (info.status === 'progress') {
+          console.log(`[FocusTube] Model loading: ${Math.round(info.progress * 100)}%`);
+        }
+      },
+    });
+  }
+}
+
 export type ProgressCallback = (info: any) => void;
 
 /**

@@ -125,6 +125,190 @@
     return element.matches(ALL_VIDEO_CARD_SELECTORS);
   }
 
+  // src/data/topicHierarchy.ts
+  var PARENT_TOPICS = {
+    "tech": {
+      label: "Tech",
+      children: [
+        "programming",
+        "software engineering",
+        "web development",
+        "mobile development",
+        "data science",
+        "machine learning",
+        "artificial intelligence",
+        "cybersecurity",
+        "devops",
+        "cloud computing",
+        "engineering",
+        "mechanical engineering",
+        "electrical engineering",
+        "civil engineering"
+      ]
+    },
+    "business": {
+      label: "Business",
+      children: [
+        "entrepreneurship",
+        "business",
+        "marketing",
+        "sales",
+        "finance",
+        "investing",
+        "personal finance",
+        "economics"
+      ]
+    },
+    "science": {
+      label: "Science",
+      children: [
+        "science",
+        "physics",
+        "chemistry",
+        "biology",
+        "astronomy",
+        "environmental science",
+        "mathematics",
+        "calculus",
+        "statistics",
+        "algebra",
+        "geometry"
+      ]
+    },
+    "history": {
+      label: "History",
+      children: [
+        "history",
+        "world history",
+        "ancient history",
+        "modern history"
+      ]
+    },
+    "languages": {
+      label: "Languages",
+      children: [
+        "language learning",
+        "english",
+        "spanish",
+        "french",
+        "german",
+        "japanese",
+        "chinese",
+        "korean"
+      ]
+    },
+    "productivity": {
+      label: "Productivity",
+      children: [
+        "productivity",
+        "time management",
+        "goal setting",
+        "study skills",
+        "personal development",
+        "self improvement"
+      ]
+    },
+    "design": {
+      label: "Design",
+      children: [
+        "design",
+        "graphic design",
+        "ui design",
+        "ux design",
+        "photography",
+        "video editing",
+        "animation",
+        "architecture",
+        "interior design"
+      ]
+    },
+    "health": {
+      label: "Health",
+      children: [
+        "fitness",
+        "mental health",
+        "meditation",
+        "mindfulness",
+        "yoga",
+        "nutrition",
+        "medicine",
+        "nursing"
+      ]
+    },
+    "cooking": {
+      label: "Cooking",
+      children: [
+        "cooking",
+        "baking",
+        "healthy eating",
+        "meal prep"
+      ]
+    },
+    "music": {
+      label: "Music",
+      children: [
+        "music",
+        "guitar",
+        "piano",
+        "music production",
+        "songwriting"
+      ]
+    },
+    "writing": {
+      label: "Writing",
+      children: [
+        "writing",
+        "creative writing",
+        "journaling",
+        "blogging"
+      ]
+    },
+    "social_sciences": {
+      label: "Social Sciences",
+      children: [
+        "philosophy",
+        "psychology",
+        "sociology",
+        "political science",
+        "law",
+        "education",
+        "teaching",
+        "research"
+      ]
+    },
+    "lifestyle": {
+      label: "Lifestyle",
+      children: [
+        "gardening",
+        "diy",
+        "woodworking",
+        "automotive",
+        "travel",
+        "geography",
+        "cultures",
+        "religion"
+      ]
+    }
+  };
+  function getChildTopics(parentTopicId) {
+    const parent = PARENT_TOPICS[parentTopicId];
+    return parent ? parent.children : [];
+  }
+  function isParentTopic(topicId) {
+    return PARENT_TOPICS.hasOwnProperty(topicId);
+  }
+  function expandTopics(topics) {
+    const expanded = [];
+    for (const topic of topics) {
+      if (isParentTopic(topic)) {
+        expanded.push(...getChildTopics(topic));
+      } else {
+        expanded.push(topic);
+      }
+    }
+    return [...new Set(expanded)];
+  }
+
   // src/content/videoFilter.ts
   var CATEGORY_KEYWORDS = {
     entertainment: [
@@ -488,7 +672,8 @@
     return 0;
   }
   function matchBlockedCategory(text, blockedCategories, userGoals) {
-    for (const goal of userGoals) {
+    const expandedGoals = expandTopics(userGoals);
+    for (const goal of expandedGoals) {
       const goalKeywords = TOPIC_KEYWORDS[goal.toLowerCase()];
       if (goalKeywords) {
         for (const keyword of goalKeywords) {
@@ -513,11 +698,15 @@
     }
     return null;
   }
-  function isFocusMode(profile) {
-    return profile.goals.length === 1 && profile.blockedDisplayMode === "hide";
-  }
   function applyLocalFilters(video, profile) {
-    const focusActive = isFocusMode(profile);
+    if (profile.filteringEnabled === false) {
+      return {
+        action: "allow",
+        reason: "",
+        confidence: 1,
+        source: "local"
+      };
+    }
     if (profile.allowedChannels?.length) {
       const channelLower = video.channel.toLowerCase();
       const isAllowed = profile.allowedChannels.some(
@@ -550,6 +739,7 @@
         };
       }
     }
+    const focusActive = profile.goals?.length === 1 && profile.blockedDisplayMode === "hide";
     if (focusActive) {
       const combined = `${video.title.toLowerCase()} ${video.channel.toLowerCase()}`;
       const focusTopic = profile.goals[0];
@@ -749,6 +939,10 @@
   }
   function applyFilterResult(video, result, profile) {
     const el = video.element;
+    if (profile.filteringEnabled === false) {
+      cleanElement(el);
+      return;
+    }
     if (!originalDisplays.has(el)) {
       originalDisplays.set(el, el.style.display);
     }
@@ -946,7 +1140,6 @@ ${result.reason}`);
     startObserver();
     listenForNavigation();
     listenForProfileChanges();
-    console.log("[FocusTube] Observer initialized");
   }
   function processExistingCards() {
     const cards = document.querySelectorAll(ALL_VIDEO_CARD_SELECTORS);
@@ -1031,8 +1224,8 @@ ${result.reason}`);
       source: response.cached ? "cache" : "ai",
       categories: response.result.categories
     };
-    const isFocusMode2 = userProfile?.goals?.length === 1 && userProfile?.blockedDisplayMode === "hide";
-    if (isFocusMode2) {
+    const isFocusMode = userProfile?.goals?.length === 1 && userProfile?.blockedDisplayMode === "hide";
+    if (isFocusMode) {
       if (result.action === "uncertain") {
         result.action = "block";
         result.reason = `Focus Mode: ${result.reason}`;
@@ -1068,18 +1261,15 @@ ${result.reason}`);
       childList: true,
       subtree: true
     });
-    console.log("[FocusTube] MutationObserver started");
   }
   function listenForNavigation() {
     document.addEventListener("yt-navigate-finish", () => {
-      console.log("[FocusTube] SPA navigation detected \u2014 rescanning");
       setTimeout(processExistingCards, 500);
     });
   }
   function listenForProfileChanges() {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.type === "PROFILE_CHANGED") {
-        console.log("[FocusTube] Profile changed \u2014 re-evaluating videos");
         chrome.runtime.sendMessage({ type: "GET_PROFILE" }, (response) => {
           if (response?.profile) {
             const profile = response.profile;
@@ -1104,9 +1294,12 @@ ${result.reason}`);
   }
   function logResult(video, result) {
     const icon = result.action === "block" ? "\u{1F6AB}" : result.action === "allow" ? "\u2705" : "\u2753";
-    console.log(
-      `[FocusTube] ${icon} ${result.action.toUpperCase()} | "${video.title}" | ${result.reason} | source: ${result.source}`
-    );
+    console.log(`[FocusTube] ${icon} ${video.title.slice(0, 50)}...`, {
+      action: result.action,
+      reason: result.reason,
+      confidence: result.confidence,
+      source: result.source
+    });
   }
   function sendStatUpdate(action) {
     chrome.runtime.sendMessage({ type: "UPDATE_STATS", action }).catch(() => {
@@ -1120,7 +1313,6 @@ ${result.reason}`);
     blockShorts: true
   };
   async function initialize() {
-    console.log("[FocusTube] Content script loaded on", window.location.href);
     try {
       const debugConfig = await chrome.runtime.sendMessage({ type: "GET_DEBUG" });
       if (debugConfig) {
@@ -1169,7 +1361,6 @@ ${result.reason}`);
     if (match) {
       const videoId = match[1];
       const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      console.log(`[FocusTube] Redirecting Short to regular player: ${watchUrl}`);
       window.location.replace(watchUrl);
     }
   }
