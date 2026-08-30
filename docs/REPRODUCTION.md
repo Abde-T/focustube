@@ -45,13 +45,13 @@ This will compile the TypeScript files and bundle everything into the `dist/` di
 
 ## Testing
 * **Video Detection & Filtering**: Browse YouTube and observe the borders around videos. Debug mode will highlight blocked videos with red outlines and uncertain videos with yellow outlines.
-* **Shorts Filtering**: Toggle "Block YouTube Shorts" in the extension settings. Reload YouTube and observe that the Shorts shelf and Shorts videos are completely hidden (`display: none`).
+* **Shorts Filtering**: Toggle "Block YouTube Shorts" in the extension settings and observe that the Shorts shelf and Shorts videos are completely hidden (`display: none`).
 * **AI Classification**: Open the extension popup, select focus topics from the predefined categories using the parent/child hierarchy. Verify that videos matching these topics are allowed while others are blocked.
 * **Layout Integrity**: Ensure that the YouTube grid remains intact (no large empty spaces) when videos are highlighted.
 
 ## Demo Scenario
 1. Open the FocusTube extension popup.
-2. In the Topics tab, click on parent categories like "Tech" to expand and select child topics like "Programming" and "Software Engineering".
+2. In the Topics tab, click on parent categories like "Tech".
 3. Observe the selected topics appear as active pills.
 4. Ensure "Block YouTube Shorts" is enabled in the Settings tab.
 5. Open `https://www.youtube.com`.
@@ -81,8 +81,8 @@ The baseline represents the current state without FocusTube - users relying on w
 5. Record the time spent on relevant vs irrelevant content
 
 **Baseline Expected Behavior:**
-- Users typically spend 20-30% of time on goal-relevant content
-- 70-80% of time is consumed by distractions (clickbait, Shorts, unrelated recommendations)
+- Without automated filtering, users must rely on willpower to ignore tempting recommendations
+- YouTube's algorithm actively promotes engaging content that may not align with learning goals
 - High cognitive load from constant decision-making about what to watch
 - No persistent state - focus must be re-established each session
 
@@ -97,9 +97,9 @@ The baseline represents the current state without FocusTube - users relying on w
 6. Browse YouTube for 30 minutes with the same goal
 
 **Solution Expected Behavior:**
-- Users spend 80%+ of time on goal-relevant content
-- Distractions are automatically filtered out
-- Near-zero cognitive load - filtering is automatic
+- Videos matching selected focus topics are allowed, others are blocked or hidden
+- Distractions are automatically filtered based on semantic similarity
+- Reduced cognitive load - filtering is automatic
 - Persistent focus state across sessions
 
 ---
@@ -116,23 +116,23 @@ Use the following test cases to evaluate both baseline and solution:
 
 | Case | User Goal | Expected Baseline | Expected Solution |
 |------|-----------|-------------------|-------------------|
-| 1 | "Learn programming" | 20-30% relevant | 80%+ relevant |
-| 2 | "Learn cooking" | 20-30% relevant | 80%+ relevant |
-| 3 | "Learn fitness" | 20-30% relevant | 80%+ relevant |
-| 4 | "Learn machine learning" | 20-30% relevant | 80%+ relevant |
-| 5 | "Learn music production" | 20-30% relevant | 80%+ relevant |
-| 6 | "Learn photography" | 20-30% relevant | 80%+ relevant |
-| 7 | "Learn business" | 20-30% relevant | 80%+ relevant |
-| 8 | "Learn history" | 20-30% relevant | 80%+ relevant |
-| 9 | "Learn language learning" | 20-30% relevant | 80%+ relevant |
-| 10 | "Learn DIY/crafts" | 20-30% relevant | 80%+ relevant |
+| 1 | "Learn programming" | Manual willpower required | Automated semantic filtering |
+| 2 | "Learn cooking" | Manual willpower required | Automated semantic filtering |
+| 3 | "Learn fitness" | Manual willpower required | Automated semantic filtering |
+| 4 | "Learn machine learning" | Manual willpower required | Automated semantic filtering |
+| 5 | "Learn music production" | Manual willpower required | Automated semantic filtering |
+| 6 | "Learn photography" | Manual willpower required | Automated semantic filtering |
+| 7 | "Learn business" | Manual willpower required | Automated semantic filtering |
+| 8 | "Learn history" | Manual willpower required | Automated semantic filtering |
+| 9 | "Learn language learning" | Manual willpower required | Automated semantic filtering |
+| 10 | "Learn DIY/crafts" | Manual willpower required | Automated semantic filtering |
 
 ### Challenging Case
 
 **Case 11**: "Learn web development" with mixed content
 - **Challenge**: YouTube recommendations include both relevant (coding tutorials) and borderline relevant (tech news, gadget reviews) content
-- **Baseline Expected**: 15-25% relevant (user gets distracted by tech news)
-- **Solution Expected**: 75-85% relevant (semantic understanding filters out non-tutorial content)
+- **Baseline Expected**: User must manually distinguish between tutorials and tech news
+- **Solution Expected**: Semantic understanding filters out non-tutorial content based on topic matching
 
 ### Evaluation Procedure
 
@@ -150,11 +150,11 @@ Use the following test cases to evaluate both baseline and solution:
 
 3. **Expected Results Summary:**
 
-| Metric | Baseline | Solution | Improvement |
+| Metric | Baseline | Solution | Expected Improvement |
 |--------|----------|----------|-------------|
-| Primary outcome (relevant content ratio) | 25% | 82% | +57 percentage points |
-| Human time per task (decision-making) | ~15 min/hour | ~2 min/hour | -87% |
-| Cognitive load (subjective 1-10) | 8/10 | 2/10 | -75% |
+| Filtering mechanism | Manual willpower | Automated semantic filtering | Reduced cognitive load |
+| Decision-making | Constant manual choices | Automatic filtering | Less time spent deciding |
+| Focus persistence | Must re-establish each session | Persistent across sessions | Consistent focus |
 | Cost per task | $0 | $0 | $0 |
 
 ### Reproducing the Results
@@ -207,10 +207,10 @@ To reproduce these results from a clean environment:
 
 **Spreadsheet Output:**
 ```
-Case | Goal | Videos Clicked | Relevant | Ratio | Baseline | Solution | Improvement
------|------|----------------|----------|-------|----------|----------|-------------
-1    | Programming | 20 | 16 | 80% | 25% | 80% | +55%
-2    | Cooking | 18 | 15 | 83% | 22% | 83% | +61%
+Case | Goal | Videos Analyzed | Filtered Correctly | Notes
+-----|------|------------------|-------------------|------
+1    | Programming | [record count] | [record count] | [observations]
+2    | Cooking | [record count] | [record count] | [observations]
 ...
 ```
 
@@ -221,5 +221,4 @@ Case | Goal | Videos Clicked | Relevant | Ratio | Baseline | Solution | Improvem
 - The embedding model loads on first use (~10-20s), subsequent classifications are instant
 - Local inference means no external API calls for video classification (privacy-preserving)
 - The "Fail-Open" architecture ensures users never get completely blocked if classification fails
-- Debug mode (red outlines) can be enabled by modifying `src/content/uiModifier.ts` line 10: `let debugMode = true;`
 - Users can manually select topics from the predefined parent/child hierarchy

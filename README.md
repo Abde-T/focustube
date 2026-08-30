@@ -45,7 +45,7 @@ This creates a cognitive load that makes sustained learning difficult. Users oft
 
 | STAGE | WHAT YOU TRIED AND WHY | EVIDENCE | DECISION / LEARNING |
 |-------|------------------------|----------|---------------------|
-| **Baseline** | Manual YouTube browsing with no filtering. Users rely on willpower alone to avoid distractions. | Users report spending 2-3 hours on YouTube with only 30-60 minutes of productive content consumption. | Established the starting point - willpower alone is insufficient for sustained focus. |
+| **Baseline** | Manual YouTube browsing with no filtering. Users rely on willpower alone to avoid distractions. | Without automated filtering, users must constantly exercise willpower to ignore tempting recommendations. | Established the starting point - willpower alone is insufficient for sustained focus. |
 | **Iteration 1** | Added basic keyword-based filtering using exact string matching against video titles and channel names. | Filtering worked for obvious matches but missed semantically related content (e.g., "web dev" vs "frontend programming"). | Kept as foundation but recognized need for semantic understanding. |
 | **Iteration 2** | Integrated local AI embeddings using Transformers.js (Xenova/all-MiniLM-L6-v2) for semantic similarity matching. | Improved relevance detection significantly - videos with similar meaning but different keywords were now correctly identified. | Kept - this was the key breakthrough for accurate filtering. |
 | **Iteration 3** | Implemented parent/child topic hierarchy to group related topics (e.g., "Tech" → "Programming", "AI", "Data Science"). | Simplified the UI from 50+ individual topics to 10 parent categories, making the popup more approachable. | Kept - reduced cognitive load for users while maintaining filtering granularity. |
@@ -57,7 +57,7 @@ This creates a cognitive load that makes sustained learning difficult. Users oft
 | **Iteration 9** | Implemented "Fail-Open" architecture - classification failures default to allowing videos. | Users never get completely blocked from YouTube if the AI encounters an error. | Kept - essential safety principle for a browser extension. |
 | **Iteration 10** | Removed debug mode toggle from production UI and cleaned up console logging. | Cleaner, more professional user-facing interface. | Kept - polish for production readiness. |
 | **Iteration 11** | Added silent filtering disable mode - when disabled, no UI indicators are shown. | Users can completely disable filtering without any visual artifacts on YouTube. | Kept - provides clean user experience when filtering is paused. |
-| **Final** | Combined all successful iterations into a cohesive extension with local AI, semantic understanding, topic hierarchy, real-time updates, and silent disable mode. | Users report spending 80%+ of YouTube time on relevant content vs 20-30% with manual filtering. | Main contribution: Automated focus maintenance using local semantic AI with zero external API dependencies. |
+| **Final** | Combined all successful iterations into a cohesive extension with local AI, semantic understanding, topic hierarchy, real-time updates, and silent disable mode. | Extension successfully filters videos based on semantic similarity to user-selected topics across all YouTube page types. | Main contribution: Automated focus maintenance using local semantic AI with zero external API dependencies. |
 
 ## Main Failure Mode
 
