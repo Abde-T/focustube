@@ -30553,7 +30553,7 @@ ${t2}`);
         setFocusState(message.state).then(() => {
           chrome.notifications.create({
             type: "basic",
-            iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+            iconUrl: "icon.png",
             title: "FocusTube",
             message: message.state.active ? `Focus Mode activated: ${message.state.topic}` : "Focus Mode ended. Normal filtering restored."
           });
